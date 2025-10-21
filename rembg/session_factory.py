@@ -1,9 +1,15 @@
+import importlib
 import os
 from typing import Optional, Type
 
 import onnxruntime as ort
 
-from .sessions import get_session_class, normalize_session_name, sessions_names
+from .sessions import (
+    get_session_class,
+    normalize_session_name,
+    sessions,
+    sessions_names,
+)
 from .sessions.base import BaseSession
 from .sessions.u2net import U2netSession
 
@@ -31,6 +37,29 @@ def new_session(model_name: str = "u2net", *args, **kwargs) -> BaseSession:
     """
     normalized_model = normalize_session_name(model_name)
     session_class: Optional[Type[BaseSession]] = get_session_class(normalized_model)
+
+    if session_class is None:
+        # Attempt a lazy import for models that might not have been registered
+        # yet.  This keeps backwards compatibility with environments where the
+        # module providing the session class is available but wasn't imported
+        # during package initialisation (for example because an older cached
+        # module list is still in use).
+        fallback_targets = {
+            "bria-rmbg14": "rembg.sessions.bria_rmbg14.BriaRmBg14Session",
+        }
+
+        target = fallback_targets.get(normalized_model)
+        if target:
+            module_name, class_name = target.rsplit(".", 1)
+            try:
+                module = importlib.import_module(module_name)
+                session_class = getattr(module, class_name)
+            except (ImportError, AttributeError) as exc:  # pragma: no cover - best effort fallback
+                raise ValueError(
+                    f"Model '{model_name}' is not available in the current installation."
+                ) from exc
+            else:
+                sessions[normalized_model] = session_class
 
     if session_class is None:
         available = ", ".join(sorted(sessions_names))
