@@ -55,6 +55,20 @@
         max-width: 520px;
       }
 
+      .config-note {
+        margin: -8px auto 24px;
+        font-size: 0.9rem;
+        max-width: 640px;
+        color: var(--muted);
+      }
+
+      .config-note code {
+        font-family: "SFMono-Regular", "Consolas", "Liberation Mono", Menlo, monospace;
+        background: rgba(148, 163, 184, 0.18);
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+
       .model-selector {
         margin: 0 auto 32px;
         padding: 16px 20px;
@@ -383,6 +397,12 @@
         将图片拖入页面任意位置，即可自动上传到抠图服务并返回透明背景图片。
         支持批量拖拽，处理完成后自动下载结果。
       </p>
+      <p class="config-note">
+        默认使用 BRIA RMBG v1.4 模型，权重路径指向
+        <code>C:\Users\CNQ\.u2net\rmbg14.onnx</code> 并固定使用 CPU 推理。
+        如切换 GPU，请在页面底部脚本中的 <code>RMBG14_PROVIDERS</code>
+        常量调整为 <code>["CUDAExecutionProvider", "CPUExecutionProvider"]</code>。
+      </p>
       <div class="model-selector" id="model-selector">
         <span>当前模型：<span class="current-model-label" id="current-model-label"></span></span>
         <button type="button" id="open-model-dialog">更换模型</button>
@@ -426,7 +446,12 @@
       // 自定义接口地址，可根据需要修改。
       const API_BASE = "http://192.168.1.5:7000/api";
       const ENDPOINT = API_BASE.replace(/\/$/, "") + "/remove";
-      const DEFAULT_MODEL = "bria-rmbg";
+
+      // Windows 服务器上 RMBG-1.4 权重默认路径，若路径有变请同步修改。
+      const RMBG14_MODEL_PATH = "C:\\Users\\CNQ\\.u2net\\rmbg14.onnx";
+      const RMBG14_PROVIDERS = ["CPUExecutionProvider"]; // GPU 时改为 ["CUDAExecutionProvider", "CPUExecutionProvider"]
+
+      const DEFAULT_MODEL = "bria-rmbg14";
 
       const MODELS = [
         {
@@ -489,6 +514,15 @@
        //   name: "BiRefNet Massive",
        //   description: "最重的高保真版本，追求极致画质。",
        // },
+        {
+          id: "bria-rmbg14",
+          name: "BRIA RMBG v1.4（CPU 默认）",
+          description: "预置为 Windows CPU 推理，读取本地 rmbg14.onnx 权重。",
+          extras: {
+            model_path: RMBG14_MODEL_PATH,
+            providers: RMBG14_PROVIDERS,
+          },
+        },
         {
           id: "bria-rmbg",
           name: "BRIA RMBG v2-慢，但扣的好",
@@ -736,7 +770,18 @@
         formData.append("file", file, file.name);
         formData.append("model", selectedModel);
 
-        xhr.open("POST", ENDPOINT, true);
+        const modelConfig = MODELS.find((item) => item.id === selectedModel);
+        let requestUrl;
+        try {
+          requestUrl = new URL(ENDPOINT);
+        } catch (error) {
+          requestUrl = new URL(ENDPOINT, window.location.href);
+        }
+        if (modelConfig?.extras) {
+          requestUrl.searchParams.set("extras", JSON.stringify(modelConfig.extras));
+        }
+
+        xhr.open("POST", requestUrl.toString(), true);
         xhr.responseType = "blob";
 
         xhr.upload.addEventListener("progress", (event) => {

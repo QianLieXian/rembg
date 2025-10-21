@@ -78,6 +78,10 @@ from .bria_rmbg import BriaRmBgSession
 
 sessions[BriaRmBgSession.name()] = BriaRmBgSession
 
+from .bria_rmbg14 import BriaRmBg14Session
+
+sessions[BriaRmBg14Session.name()] = BriaRmBg14Session
+
 from .ben_custom import BenCustomSession
 
 sessions[BenCustomSession.name()] = BenCustomSession
