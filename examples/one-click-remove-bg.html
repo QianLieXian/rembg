@@ -55,6 +55,45 @@
         max-width: 520px;
       }
 
+      .model-selector {
+        margin: 0 auto 32px;
+        padding: 16px 20px;
+        border-radius: 18px;
+        background: var(--card);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .model-selector {
+          background: var(--card-dark);
+          box-shadow: 0 12px 32px rgba(17, 24, 39, 0.6);
+          color: var(--text-dark);
+        }
+      }
+
+      .model-selector .current-model-label {
+        font-weight: 600;
+      }
+
+      .model-selector button {
+        padding: 8px 18px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .model-selector button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+      }
+
       .drop-area {
         width: min(90vw, 640px);
         min-height: 240px;
@@ -187,6 +226,149 @@
         transform: translateY(0);
       }
 
+      .model-dialog {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(6px);
+        padding: 24px;
+        z-index: 100;
+      }
+
+      .model-dialog.visible {
+        display: flex;
+      }
+
+      .model-dialog__card {
+        width: min(640px, 90vw);
+        max-height: min(520px, 90vh);
+        overflow: hidden;
+        border-radius: 24px;
+        background: var(--card);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+        display: flex;
+        flex-direction: column;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .model-dialog__card {
+          background: var(--card-dark);
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        }
+      }
+
+      .model-dialog__header {
+        padding: 24px 28px 0;
+        text-align: left;
+      }
+
+      .model-dialog__body {
+        padding: 16px 28px 0;
+        overflow-y: auto;
+      }
+
+      .model-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .model-card {
+        position: relative;
+        border: 1px solid rgba(99, 102, 241, 0.12);
+        border-radius: 18px;
+        padding: 18px;
+        text-align: left;
+        cursor: pointer;
+        transition: transform 0.2s ease, border-color 0.2s ease,
+          box-shadow 0.2s ease;
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .model-card {
+          background: rgba(31, 41, 55, 0.6);
+          border-color: rgba(129, 140, 248, 0.12);
+          color: var(--text-dark);
+        }
+      }
+
+      .model-card:hover,
+      .model-card[data-selected="true"] {
+        transform: translateY(-3px);
+        border-color: rgba(79, 70, 229, 0.6);
+        box-shadow: 0 16px 32px rgba(79, 70, 229, 0.18);
+      }
+
+      .model-card__name {
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .model-card__desc {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .model-card__tooltip {
+        position: absolute;
+        inset: auto 12px 12px 12px;
+        border-radius: 12px;
+        background: rgba(30, 64, 175, 0.08);
+        padding: 8px 10px;
+        font-size: 0.75rem;
+        color: var(--primary);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .model-card:hover .model-card__tooltip {
+        opacity: 1;
+      }
+
+      .model-dialog__actions {
+        padding: 18px 28px 28px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: linear-gradient(
+          to top,
+          rgba(15, 23, 42, 0.08),
+          rgba(15, 23, 42, 0)
+        );
+      }
+
+      .model-dialog__actions button {
+        padding: 10px 20px;
+        border-radius: 999px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .model-dialog__actions .cancel-btn {
+        background: rgba(107, 114, 128, 0.16);
+        color: var(--text);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .model-dialog__actions .cancel-btn {
+          color: var(--text-dark);
+          background: rgba(148, 163, 184, 0.22);
+        }
+      }
+
+      .model-dialog__actions .confirm-btn {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 10px 24px rgba(79, 70, 229, 0.24);
+      }
+
       footer {
         margin: auto 0 24px;
         color: var(--muted);
@@ -201,6 +383,10 @@
         将图片拖入页面任意位置，即可自动上传到抠图服务并返回透明背景图片。
         支持批量拖拽，处理完成后自动下载结果。
       </p>
+      <div class="model-selector" id="model-selector">
+        <span>当前模型：<span class="current-model-label" id="current-model-label"></span></span>
+        <button type="button" id="open-model-dialog">更换模型</button>
+      </div>
     </header>
 
     <label class="drop-area" id="drop-area" for="file-input">
@@ -218,14 +404,142 @@
 
     <footer>如需更换接口地址，请在文件中修改 API_BASE。</footer>
 
+    <div class="model-dialog" id="model-dialog" role="dialog" aria-modal="true">
+      <div class="model-dialog__card">
+        <div class="model-dialog__header">
+          <h2>选择抠图模型</h2>
+          <p class="subtitle">
+            不同模型侧重的场景不同，悬停可查看简介，确认后将作用于后续任务。
+          </p>
+        </div>
+        <div class="model-dialog__body">
+          <div class="model-grid" id="model-grid"></div>
+        </div>
+        <div class="model-dialog__actions">
+          <button type="button" class="cancel-btn" id="cancel-model">取消</button>
+          <button type="button" class="confirm-btn" id="confirm-model">确定</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       // 自定义接口地址，可根据需要修改。
       const API_BASE = "http://localhost:7000/api";
       const ENDPOINT = API_BASE.replace(/\/$/, "") + "/remove";
+      const DEFAULT_MODEL = "u2net";
+
+      const MODELS = [
+        {
+          id: "u2net",
+          name: "U2Net 通用模型",
+          description: "适用多种主体抠图场景，平衡速度与质量。",
+        },
+        {
+          id: "u2netp",
+          name: "U2NetP 轻量模型",
+          description: "体积小速度快，适合实时或批量处理。",
+        },
+        {
+          id: "birefnet_general",
+          name: "BiRefNet 通用增强",
+          description: "边缘更锐利，对复杂背景表现更佳。",
+        },
+        {
+          id: "birefnet_portrait",
+          name: "BiRefNet 人像",
+          description: "针对人像优化，头发细节保留更好。",
+        },
+        {
+          id: "bria_rmbg",
+          name: "BRIA RMBG 2.0",
+          description: "在电商及物品抠图上表现稳定。",
+        },
+      ];
 
       const dropArea = document.getElementById("drop-area");
       const fileInput = document.getElementById("file-input");
       const taskList = document.getElementById("task-list");
+      const modelDialog = document.getElementById("model-dialog");
+      const modelGrid = document.getElementById("model-grid");
+      const openModelDialog = document.getElementById("open-model-dialog");
+      const cancelModel = document.getElementById("cancel-model");
+      const confirmModel = document.getElementById("confirm-model");
+      const currentModelLabel = document.getElementById("current-model-label");
+
+      let selectedModel = DEFAULT_MODEL;
+      let pendingModel = selectedModel;
+
+      function updateCurrentModelLabel() {
+        const model = MODELS.find((item) => item.id === selectedModel);
+        currentModelLabel.textContent = model ? model.name : selectedModel;
+      }
+
+      function renderModelOptions() {
+        modelGrid.innerHTML = "";
+        MODELS.forEach((model) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "model-card";
+          card.dataset.modelId = model.id;
+          card.dataset.selected = model.id === pendingModel;
+          card.setAttribute("aria-pressed", model.id === pendingModel ? "true" : "false");
+
+          const title = document.createElement("div");
+          title.className = "model-card__name";
+          title.textContent = model.name;
+
+          const desc = document.createElement("div");
+          desc.className = "model-card__desc";
+          desc.textContent = model.description;
+
+          const tooltip = document.createElement("div");
+          tooltip.className = "model-card__tooltip";
+          tooltip.textContent = model.description;
+
+          card.appendChild(title);
+          card.appendChild(desc);
+          card.appendChild(tooltip);
+
+          card.addEventListener("click", () => {
+            pendingModel = model.id;
+            [...modelGrid.children].forEach((child) => {
+              child.dataset.selected = child.dataset.modelId === pendingModel;
+              child.setAttribute(
+                "aria-pressed",
+                child.dataset.modelId === pendingModel ? "true" : "false"
+              );
+            });
+          });
+
+          modelGrid.appendChild(card);
+        });
+      }
+
+      function openModelSelector() {
+        pendingModel = selectedModel;
+        renderModelOptions();
+        modelDialog.classList.add("visible");
+      }
+
+      function closeModelSelector() {
+        modelDialog.classList.remove("visible");
+      }
+
+      openModelDialog.addEventListener("click", openModelSelector);
+      cancelModel.addEventListener("click", closeModelSelector);
+      confirmModel.addEventListener("click", () => {
+        selectedModel = pendingModel;
+        updateCurrentModelLabel();
+        closeModelSelector();
+      });
+
+      modelDialog.addEventListener("click", (event) => {
+        if (event.target === modelDialog) {
+          closeModelSelector();
+        }
+      });
+
+      updateCurrentModelLabel();
 
       const preventDefaults = (event) => {
         event.preventDefault();
@@ -332,6 +646,7 @@
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
         formData.append("file", file, file.name);
+        formData.append("model", selectedModel);
 
         xhr.open("POST", ENDPOINT, true);
         xhr.responseType = "blob";
