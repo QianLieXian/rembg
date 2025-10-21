@@ -431,30 +431,102 @@
       const MODELS = [
         {
           id: "u2net",
-          name: "U2Net 通用模型",
+          name: "U²-Net 通用",
           description: "适用多种主体抠图场景，平衡速度与质量。",
         },
         {
           id: "u2netp",
-          name: "U2NetP 轻量模型",
+          name: "U²-Net P 轻量",
           description: "体积小速度快，适合实时或批量处理。",
         },
         {
-          id: "birefnet_general",
-          name: "BiRefNet 通用增强",
-          description: "边缘更锐利，对复杂背景表现更佳。",
+          id: "u2net_human_seg",
+          name: "U²-Net 人像",
+          description: "针对人物主体调优，发丝与轮廓更平滑。",
         },
         {
-          id: "birefnet_portrait",
+          id: "u2net_cloth_seg",
+          name: "U²-Net 服饰",
+          description: "专注衣物与商品分割，适合换装和电商场景。",
+        },
+        {
+          id: "u2net_custom",
+          name: "U²-Net 自定义",
+          description: "用于加载自定义权重（需在服务器提供 model_path）。",
+        },
+        {
+          id: "birefnet-general",
+          name: "BiRefNet 通用",
+          description: "高清通用模型，复杂背景下保持清晰边缘。",
+        },
+        {
+          id: "birefnet-general-lite",
+          name: "BiRefNet 通用 Lite",
+          description: "BiRefNet 的加速版，性能与速度取得平衡。",
+        },
+        {
+          id: "birefnet-portrait",
           name: "BiRefNet 人像",
-          description: "针对人像优化，头发细节保留更好。",
+          description: "针对肖像优化，保留更多细微毛发和半透明区域。",
         },
         {
-          id: "bria_rmbg",
-          name: "BRIA RMBG 2.0",
-          description: "在电商及物品抠图上表现稳定。",
+          id: "birefnet-dis",
+          name: "BiRefNet DIS 细节",
+          description: "以高分辨率细节为目标，适合复杂边缘主体。",
+        },
+        {
+          id: "birefnet-hrsod",
+          name: "BiRefNet HRSOD",
+          description: "针对大主体突出场景，显著物体分离效果佳。",
+        },
+        {
+          id: "birefnet-cod",
+          name: "BiRefNet COD",
+          description: "面向伪装/隐蔽主体，复杂背景下定位更稳。",
+        },
+        {
+          id: "birefnet-massive",
+          name: "BiRefNet Massive",
+          description: "最重的高保真版本，追求极致画质。",
+        },
+        {
+          id: "bria-rmbg",
+          name: "BRIA RMBG v2",
+          description: "来自 BRIA 的商业模型，电商与商品抠图表现稳定。",
+        },
+        {
+          id: "isnet-general-use",
+          name: "IS-Net 通用",
+          description: "IS-Net 官方权重，兼顾速度与准确率。",
+        },
+        {
+          id: "isnet-anime",
+          name: "IS-Net 动漫",
+          description: "面向二次元/插画主体，边缘干净不毛刺。",
+        },
+        {
+          id: "dis_custom",
+          name: "DIS 自定义",
+          description: "兼容自训练 DIS 模型（需在服务器提供 model_path）。",
+        },
+        {
+          id: "ben_custom",
+          name: "Background Eraser 自定义",
+          description: "适配 BEN/BG Eraser 系列自定义权重。",
+        },
+        {
+          id: "sam",
+          name: "Segment Anything (SAM)",
+          description: "支持 SAM 编解码流程，可配合 extras 指定提示点。",
+        },
+        {
+          id: "silueta",
+          name: "Silueta",
+          description: "轻量抠图网络，适合部署在资源受限环境。",
         },
       ];
+
+      const AVAILABLE_MODEL_IDS = new Set(MODELS.map((item) => item.id));
 
       const dropArea = document.getElementById("drop-area");
       const fileInput = document.getElementById("file-input");
@@ -466,11 +538,18 @@
       const confirmModel = document.getElementById("confirm-model");
       const currentModelLabel = document.getElementById("current-model-label");
 
-      let selectedModel = DEFAULT_MODEL;
+      let selectedModel = AVAILABLE_MODEL_IDS.has(DEFAULT_MODEL)
+        ? DEFAULT_MODEL
+        : MODELS[0]?.id || DEFAULT_MODEL;
       let pendingModel = selectedModel;
 
       function updateCurrentModelLabel() {
         const model = MODELS.find((item) => item.id === selectedModel);
+        if (!model && MODELS.length) {
+          selectedModel = MODELS[0].id;
+          currentModelLabel.textContent = MODELS[0].name;
+          return;
+        }
         currentModelLabel.textContent = model ? model.name : selectedModel;
       }
 
@@ -503,11 +582,9 @@
           card.addEventListener("click", () => {
             pendingModel = model.id;
             [...modelGrid.children].forEach((child) => {
-              child.dataset.selected = child.dataset.modelId === pendingModel;
-              child.setAttribute(
-                "aria-pressed",
-                child.dataset.modelId === pendingModel ? "true" : "false"
-              );
+              const isSelected = child.dataset.modelId === pendingModel;
+              child.dataset.selected = isSelected;
+              child.setAttribute("aria-pressed", isSelected ? "true" : "false");
             });
           });
 
@@ -528,6 +605,9 @@
       openModelDialog.addEventListener("click", openModelSelector);
       cancelModel.addEventListener("click", closeModelSelector);
       confirmModel.addEventListener("click", () => {
+        if (!AVAILABLE_MODEL_IDS.has(pendingModel) && MODELS.length) {
+          pendingModel = MODELS[0].id;
+        }
         selectedModel = pendingModel;
         updateCurrentModelLabel();
         closeModelSelector();
@@ -598,6 +678,13 @@
         });
       }
 
+      function ensureValidModelSelection() {
+        if (!AVAILABLE_MODEL_IDS.has(selectedModel) && MODELS.length) {
+          selectedModel = MODELS[0].id;
+          updateCurrentModelLabel();
+        }
+      }
+
       function createTaskItem(file) {
         const item = document.createElement("article");
         item.className = "task-item";
@@ -643,6 +730,7 @@
 
       function processFile(file) {
         const task = createTaskItem(file);
+        ensureValidModelSelection();
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
         formData.append("file", file, file.name);
@@ -696,7 +784,9 @@
               updateProgress(task.progressFill, 100);
             }, 200);
           } else {
-            handleError(task, `处理失败：${xhr.status} ${xhr.statusText}`);
+            extractErrorMessage(xhr).then((message) => {
+              handleError(task, message);
+            });
           }
         });
 
@@ -710,6 +800,82 @@
 
         task.status.textContent = "准备上传";
         xhr.send(formData);
+      }
+
+      function parseErrorPayload(text) {
+        if (!text) {
+          return "处理失败：服务器未返回错误详情";
+        }
+
+        let message = "";
+
+        try {
+          const data = JSON.parse(text);
+          if (data?.detail) {
+            if (Array.isArray(data.detail)) {
+              const combined = data.detail
+                .map((item) => {
+                  if (typeof item === "string") {
+                    return item;
+                  }
+                  if (item?.msg && item?.loc) {
+                    return `${item.msg}（${item.loc.join(" → ")}）`;
+                  }
+                  if (item?.msg) {
+                    return item.msg;
+                  }
+                  return JSON.stringify(item);
+                })
+                .join("；");
+              if (combined) {
+                message = combined;
+              }
+            } else if (typeof data.detail === "string") {
+              message = data.detail;
+            }
+          }
+
+          if (!message && typeof data?.message === "string") {
+            message = data.message;
+          }
+        } catch (error) {
+          // 不是 JSON，继续尝试返回原始文本。
+        }
+
+        if (!message) {
+          message = text;
+        }
+
+        if (/match pattern/i.test(message) || /regex/i.test(message)) {
+          return "选择的模型不受服务端支持，请刷新页面或检查服务端配置。";
+        }
+
+        return message;
+      }
+
+      function extractErrorMessage(xhr) {
+        const fallback = `处理失败：${xhr.status || 0} ${
+          xhr.statusText || ""
+        }`.trim();
+
+        if (xhr.response instanceof Blob) {
+          if (xhr.response.size === 0) {
+            return Promise.resolve(fallback);
+          }
+
+          return xhr.response
+            .text()
+            .then((text) => parseErrorPayload(text.trim()))
+            .catch(() => fallback);
+        }
+
+        const responseText =
+          typeof xhr.responseText === "string" ? xhr.responseText.trim() : "";
+        if (responseText) {
+          return Promise.resolve(parseErrorPayload(responseText));
+        }
+
+        return Promise.resolve(fallback);
       }
 
       function triggerDownload(blob, filename) {
