@@ -772,6 +772,14 @@
         },
       ];
 
+      const sliderMap = Object.fromEntries(
+        sliderDefinitions
+          .filter((config) => config.slider && config.valueEl)
+          .map((config) => [config.stateKey, config])
+      );
+
+      const MIN_ALPHA_THRESHOLD_GAP = 5;
+
       const controlState = {
         alphaMatting: Boolean(alphaMattingToggle?.checked),
         alphaMattingForegroundThreshold: 240,
@@ -779,6 +787,66 @@
         alphaMattingErodeSize: 10,
         postProcessMask: Boolean(postProcessToggle?.checked),
       };
+
+      function updateSliderDisplay(config, value) {
+        if (!config?.slider || !config?.valueEl) {
+          return;
+        }
+        config.slider.value = String(value);
+        config.valueEl.textContent = String(value);
+      }
+
+      function enforceAlphaThresholdRelationship(changedKey) {
+        const fgConfig = sliderMap.alphaMattingForegroundThreshold;
+        const bgConfig = sliderMap.alphaMattingBackgroundThreshold;
+        if (!fgConfig || !bgConfig) {
+          return;
+        }
+
+        let foreground = controlState.alphaMattingForegroundThreshold;
+        let background = controlState.alphaMattingBackgroundThreshold;
+
+        if (foreground < 0 || foreground > 255) {
+          foreground = Math.min(Math.max(foreground, 0), 255);
+        }
+        if (background < 0 || background > 255) {
+          background = Math.min(Math.max(background, 0), 255);
+        }
+
+        const gap = foreground - background;
+        if (gap >= MIN_ALPHA_THRESHOLD_GAP) {
+          updateSliderDisplay(fgConfig, foreground);
+          updateSliderDisplay(bgConfig, background);
+          controlState.alphaMattingForegroundThreshold = foreground;
+          controlState.alphaMattingBackgroundThreshold = background;
+          return;
+        }
+
+        if (changedKey === "alphaMattingForegroundThreshold") {
+          foreground = Math.min(
+            255,
+            Math.max(background + MIN_ALPHA_THRESHOLD_GAP, foreground)
+          );
+        } else if (changedKey === "alphaMattingBackgroundThreshold") {
+          background = Math.max(
+            0,
+            Math.min(foreground - MIN_ALPHA_THRESHOLD_GAP, background)
+          );
+        }
+
+        if (foreground - background < MIN_ALPHA_THRESHOLD_GAP) {
+          if (changedKey === "alphaMattingForegroundThreshold") {
+            background = Math.max(0, foreground - MIN_ALPHA_THRESHOLD_GAP);
+          } else {
+            foreground = Math.min(255, background + MIN_ALPHA_THRESHOLD_GAP);
+          }
+        }
+
+        controlState.alphaMattingForegroundThreshold = foreground;
+        controlState.alphaMattingBackgroundThreshold = background;
+        updateSliderDisplay(fgConfig, foreground);
+        updateSliderDisplay(bgConfig, background);
+      }
 
       sliderDefinitions.forEach((config) => {
         if (!config.slider || !config.valueEl) {
@@ -800,8 +868,16 @@
           const newValue = Number(target.value);
           controlState[config.stateKey] = newValue;
           config.valueEl.textContent = String(newValue);
+          if (
+            config.stateKey === "alphaMattingForegroundThreshold" ||
+            config.stateKey === "alphaMattingBackgroundThreshold"
+          ) {
+            enforceAlphaThresholdRelationship(config.stateKey);
+          }
         });
       });
+
+      enforceAlphaThresholdRelationship("alphaMattingForegroundThreshold");
 
       function updateAlphaMattingUI() {
         sliderDefinitions.forEach((config) => {
@@ -948,6 +1024,55 @@
         if (files && files.length) {
           handleFiles(files);
         }
+      });
+
+      document.addEventListener("paste", (event) => {
+        const activeElement = document.activeElement;
+        if (
+          activeElement &&
+          (activeElement instanceof HTMLInputElement ||
+            activeElement instanceof HTMLTextAreaElement ||
+            activeElement.isContentEditable)
+        ) {
+          return;
+        }
+
+        const clipboardData = event.clipboardData;
+        if (!clipboardData) {
+          return;
+        }
+
+        const images = [];
+        for (const item of clipboardData.items || []) {
+          if (item.kind !== "file") {
+            continue;
+          }
+          const file = item.getAsFile();
+          if (!file || !file.type.startsWith("image/")) {
+            continue;
+          }
+          if (file.name) {
+            images.push(file);
+            continue;
+          }
+          try {
+            const normalized = new File(
+              [file],
+              `pasted-image-${Date.now()}.png`,
+              { type: file.type || "image/png" }
+            );
+            images.push(normalized);
+          } catch (error) {
+            images.push(file);
+          }
+        }
+
+        if (images.length === 0) {
+          return;
+        }
+
+        event.preventDefault();
+        handleFiles(images);
       });
 
       dropArea.addEventListener("click", () => fileInput.click());

@@ -1,7 +1,8 @@
 import io
 import sys
+import warnings
 from enum import Enum
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import onnxruntime as ort
@@ -17,6 +18,7 @@ from PIL import Image, ImageOps
 from PIL.Image import Image as PILImage
 from pymatting.alpha.estimate_alpha_cf import estimate_alpha_cf
 from pymatting.foreground.estimate_foreground_ml import estimate_foreground_ml
+from pymatting.preconditioner.ichol import ichol
 from pymatting.util.util import stack_images
 from scipy.ndimage import binary_erosion
 
@@ -56,6 +58,15 @@ def alpha_matting_cutout(
     if img.mode == "RGBA" or img.mode == "CMYK":
         img = img.convert("RGB")
 
+    foreground_threshold = int(np.clip(foreground_threshold, 0, 255))
+    background_threshold = int(np.clip(background_threshold, 0, 255))
+
+    if foreground_threshold - background_threshold <= 0:
+        if foreground_threshold >= 255:
+            background_threshold = 254
+        else:
+            foreground_threshold = min(255, background_threshold + 1)
+
     img_array = np.asarray(img)
     mask_array = np.asarray(mask)
 
@@ -78,7 +89,57 @@ def alpha_matting_cutout(
     img_normalized = img_array / 255.0
     trimap_normalized = trimap / 255.0
 
-    alpha = estimate_alpha_cf(img_normalized, trimap_normalized)
+    if not np.any(is_foreground) or not np.any(is_background):
+        return naive_cutout(img, mask)
+
+    if not np.any(~(is_foreground | is_background)):
+        return naive_cutout(img, mask)
+
+    def make_preconditioner(
+        discard_threshold: float, shift: float
+    ) -> Callable[[Any], Any]:
+        def _preconditioner(matrix: Any) -> Any:
+            try:
+                return ichol(
+                    matrix,
+                    discard_threshold=discard_threshold,
+                    shift=shift,
+                )
+            except Exception:
+                return None
+
+        return _preconditioner
+
+    preconditioner_candidates: List[Callable[[Any], Any]] = [
+        make_preconditioner(1.0e-4, 1.0e-4),
+        make_preconditioner(1.0e-5, 1.0e-3),
+        make_preconditioner(5.0e-5, 5.0e-3),
+        lambda _: None,
+    ]
+
+    alpha = None
+    for preconditioner in preconditioner_candidates:
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always", RuntimeWarning)
+                alpha_candidate = estimate_alpha_cf(
+                    img_normalized,
+                    trimap_normalized,
+                    preconditioner=preconditioner,
+                )
+            has_cholesky_warning = any(
+                "Thresholded incomplete Cholesky" in str(warning.message)
+                for warning in caught
+            )
+            alpha = alpha_candidate
+            if not has_cholesky_warning:
+                break
+        except Exception:
+            continue
+
+    if alpha is None:
+        return naive_cutout(img, mask)
+
     foreground = estimate_foreground_ml(img_normalized, alpha)
     cutout = stack_images(foreground, alpha)
 
