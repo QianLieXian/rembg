@@ -108,6 +108,179 @@
         box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
       }
 
+      .control-panel {
+        width: min(90vw, 720px);
+        margin: 0 auto 32px;
+        padding: 24px;
+        border-radius: 20px;
+        background: var(--card);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .control-panel {
+          background: var(--card-dark);
+          box-shadow: 0 12px 32px rgba(17, 24, 39, 0.6);
+          color: var(--text-dark);
+        }
+      }
+
+      .control-panel__header {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .control-panel__title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .control-panel__subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .control-panel__toggles {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+
+      .toggle-text {
+        flex: 1;
+        min-width: 220px;
+      }
+
+      .toggle-label {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .toggle-hint {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .switch-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: rgba(107, 114, 128, 0.4);
+        border-radius: 999px;
+        transition: background 0.2s ease;
+      }
+
+      .switch-slider::before {
+        content: "";
+        position: absolute;
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
+      }
+
+      .switch input:checked + .switch-slider {
+        background: var(--primary);
+      }
+
+      .switch input:checked + .switch-slider::before {
+        transform: translateX(22px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .switch-slider::before {
+          background: #1f2937;
+          box-shadow: 0 6px 16px rgba(15, 23, 42, 0.5);
+        }
+      }
+
+      .control-panel__body {
+        display: grid;
+        gap: 18px;
+      }
+
+      @media (min-width: 640px) {
+        .control-panel__body {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+      }
+
+      .slider-control {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 16px;
+        background: rgba(99, 102, 241, 0.06);
+        transition: opacity 0.2s ease, background 0.2s ease;
+      }
+
+      .slider-control.inactive {
+        opacity: 0.6;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .slider-control {
+          background: rgba(129, 140, 248, 0.18);
+        }
+      }
+
+      .slider-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+      }
+
+      .slider-value {
+        font-variant-numeric: tabular-nums;
+        color: var(--primary);
+      }
+
+      .slider-control input[type="range"] {
+        width: 100%;
+        accent-color: var(--primary);
+      }
+
+      .slider-hint {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
       .drop-area {
         width: min(90vw, 640px);
         min-height: 240px;
@@ -398,11 +571,87 @@
         支持批量拖拽，处理完成后自动下载结果。
       </p>
       <p class="config-note">
-        默认使用 BRIA RMBG v1.4 模型，权重路径指向
-        <code>C:\Users\CNQ\.u2net\rmbg14.onnx</code> 并固定使用 CPU 推理。
-        如切换 GPU，请在页面底部脚本中的 <code>RMBG14_PROVIDERS</code>
-        常量调整为 <code>["CUDAExecutionProvider", "CPUExecutionProvider"]</code>。
+        默认使用 BRIA RMBG v2 模型，可通过下方高级参数微调 Alpha 抠图阈值与遮罩
+        后处理，实时数值显示便于复制服务端配置。
       </p>
+
+      <section class="control-panel" aria-labelledby="control-panel-title">
+        <div class="control-panel__header">
+          <h2 class="control-panel__title" id="control-panel-title">高级参数</h2>
+          <p class="control-panel__subtitle">
+            启用 Alpha 抠图可针对发丝、透明物体进行精细保留，滑块提供实时数值显示。
+          </p>
+        </div>
+
+        <div class="control-panel__toggles">
+          <div class="toggle-row">
+            <div class="toggle-text">
+              <div class="toggle-label">启用 Alpha 抠图</div>
+              <p class="toggle-hint">适合高难度场景，开启后可使用下方阈值调节。</p>
+            </div>
+            <label class="switch" aria-label="启用 Alpha 抠图">
+              <input type="checkbox" id="alpha-matting-toggle" />
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-text">
+              <div class="toggle-label">遮罩后处理</div>
+              <p class="toggle-hint">轻度平滑边缘，减少锯齿和毛刺，默认关闭。</p>
+            </div>
+            <label class="switch" aria-label="遮罩后处理">
+              <input type="checkbox" id="post-process-toggle" />
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="control-panel__body">
+          <div class="slider-control" id="slider-foreground">
+            <div class="slider-label">
+              <span>前景阈值</span>
+              <span class="slider-value" id="alpha-foreground-value">240</span>
+            </div>
+            <input
+              type="range"
+              id="alpha-foreground"
+              min="0"
+              max="255"
+              value="240"
+            />
+            <p class="slider-hint">数值越高越倾向保留主体亮部，处理复杂发丝时可适当上调。</p>
+          </div>
+          <div class="slider-control" id="slider-background">
+            <div class="slider-label">
+              <span>背景阈值</span>
+              <span class="slider-value" id="alpha-background-value">10</span>
+            </div>
+            <input
+              type="range"
+              id="alpha-background"
+              min="0"
+              max="255"
+              value="10"
+            />
+            <p class="slider-hint">减小该值可压制背景噪点，建议逐步调整以避免吞噬主体。</p>
+          </div>
+          <div class="slider-control" id="slider-erode">
+            <div class="slider-label">
+              <span>腐蚀尺寸</span>
+              <span class="slider-value" id="alpha-erode-value">10</span>
+            </div>
+            <input
+              type="range"
+              id="alpha-erode"
+              min="0"
+              max="255"
+              value="10"
+            />
+            <p class="slider-hint">用于平滑遮罩边界，小图建议保持 10~20，过大可能吞掉细节。</p>
+          </div>
+        </div>
+      </section>
+
       <div class="model-selector" id="model-selector">
         <span>当前模型：<span class="current-model-label" id="current-model-label"></span></span>
         <button type="button" id="open-model-dialog">更换模型</button>
@@ -447,86 +696,18 @@
       const API_BASE = "http://192.168.1.5:7000/api";
       const ENDPOINT = API_BASE.replace(/\/$/, "") + "/remove";
 
-      // Windows 服务器上 RMBG-1.4 权重默认路径，若路径有变请同步修改。
-      const RMBG14_MODEL_PATH = "C:\\Users\\CNQ\\.u2net\\rmbg14.onnx";
-      const RMBG14_PROVIDERS = ["CPUExecutionProvider"]; // GPU 时改为 ["CUDAExecutionProvider", "CPUExecutionProvider"]
-
-      const DEFAULT_MODEL = "bria-rmbg14";
+      const DEFAULT_MODEL = "bria-rmbg";
 
       const MODELS = [
+        {
+          id: "bria-rmbg",
+          name: "BRIA RMBG v2（默认）",
+          description: "来自 BRIA 的商业模型，电商与商品抠图表现稳定。",
+        },
         {
           id: "u2net",
           name: "U²-Net 通用-快但扣不太好",
           description: "适用多种主体抠图场景，平衡速度与质量。",
-        },
-       // {
-       //   id: "u2netp",
-       //   name: "U²-Net P 轻量",
-       //   description: "体积小速度快，适合实时或批量处理。",
-       // },
-       // {
-       //   id: "u2net_human_seg",
-       //   name: "U²-Net 人像",
-       //   description: "针对人物主体调优，发丝与轮廓更平滑。",
-       // },
-       // {
-       //   id: "u2net_cloth_seg",
-       //   name: "U²-Net 服饰",
-       //   description: "专注衣物与商品分割，适合换装和电商场景。",
-       // },
-       // {
-       //   id: "u2net_custom",
-       //   name: "U²-Net 自定义",
-       //   description: "用于加载自定义权重（需在服务器提供 model_path）。",
-       // },
-       // {
-       //   id: "birefnet-general",
-       //   name: "BiRefNet 通用",
-       //   description: "高清通用模型，复杂背景下保持清晰边缘。",
-       // },
-       // {
-       //   id: "birefnet-general-lite",
-       //   name: "BiRefNet 通用 Lite",
-       //   description: "BiRefNet 的加速版，性能与速度取得平衡。",
-       // },
-       // {
-       //   id: "birefnet-portrait",
-       //   name: "BiRefNet 人像",
-       //   description: "针对肖像优化，保留更多细微毛发和半透明区域。",
-       // },
-       // {
-       //   id: "birefnet-dis",
-       //   name: "BiRefNet DIS 细节",
-       //   description: "以高分辨率细节为目标，适合复杂边缘主体。",
-       // },
-       // {
-       //   id: "birefnet-hrsod",
-       //   name: "BiRefNet HRSOD",
-       //   description: "针对大主体突出场景，显著物体分离效果佳。",
-       // },
-       // {
-       //   id: "birefnet-cod",
-       //   name: "BiRefNet COD",
-       //   description: "面向伪装/隐蔽主体，复杂背景下定位更稳。",
-       // },
-       // {
-       //   id: "birefnet-massive",
-       //   name: "BiRefNet Massive",
-       //   description: "最重的高保真版本，追求极致画质。",
-       // },
-        {
-          id: "bria-rmbg14",
-          name: "BRIA RMBG v1.4（CPU 默认）",
-          description: "预置为 Windows CPU 推理，读取本地 rmbg14.onnx 权重。",
-          extras: {
-            model_path: RMBG14_MODEL_PATH,
-            providers: RMBG14_PROVIDERS,
-          },
-        },
-        {
-          id: "bria-rmbg",
-          name: "BRIA RMBG v2-慢，但扣的好",
-          description: "来自 BRIA 的商业模型，电商与商品抠图表现稳定。",
         },
         {
           id: "isnet-general-use",
@@ -571,6 +752,82 @@
       const cancelModel = document.getElementById("cancel-model");
       const confirmModel = document.getElementById("confirm-model");
       const currentModelLabel = document.getElementById("current-model-label");
+      const alphaMattingToggle = document.getElementById("alpha-matting-toggle");
+      const postProcessToggle = document.getElementById("post-process-toggle");
+      const sliderDefinitions = [
+        {
+          stateKey: "alphaMattingForegroundThreshold",
+          slider: document.getElementById("alpha-foreground"),
+          valueEl: document.getElementById("alpha-foreground-value"),
+        },
+        {
+          stateKey: "alphaMattingBackgroundThreshold",
+          slider: document.getElementById("alpha-background"),
+          valueEl: document.getElementById("alpha-background-value"),
+        },
+        {
+          stateKey: "alphaMattingErodeSize",
+          slider: document.getElementById("alpha-erode"),
+          valueEl: document.getElementById("alpha-erode-value"),
+        },
+      ];
+
+      const controlState = {
+        alphaMatting: Boolean(alphaMattingToggle?.checked),
+        alphaMattingForegroundThreshold: 240,
+        alphaMattingBackgroundThreshold: 10,
+        alphaMattingErodeSize: 10,
+        postProcessMask: Boolean(postProcessToggle?.checked),
+      };
+
+      sliderDefinitions.forEach((config) => {
+        if (!config.slider || !config.valueEl) {
+          return;
+        }
+
+        const container = config.slider.closest(".slider-control");
+        config.container = container;
+
+        const value = Number(config.slider.value);
+        controlState[config.stateKey] = value;
+        config.valueEl.textContent = String(value);
+
+        config.slider.addEventListener("input", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLInputElement)) {
+            return;
+          }
+          const newValue = Number(target.value);
+          controlState[config.stateKey] = newValue;
+          config.valueEl.textContent = String(newValue);
+        });
+      });
+
+      function updateAlphaMattingUI() {
+        sliderDefinitions.forEach((config) => {
+          config.container?.classList.toggle(
+            "inactive",
+            !controlState.alphaMatting
+          );
+        });
+      }
+
+      if (alphaMattingToggle) {
+        controlState.alphaMatting = alphaMattingToggle.checked;
+        alphaMattingToggle.addEventListener("change", () => {
+          controlState.alphaMatting = alphaMattingToggle.checked;
+          updateAlphaMattingUI();
+        });
+      }
+
+      if (postProcessToggle) {
+        controlState.postProcessMask = postProcessToggle.checked;
+        postProcessToggle.addEventListener("change", () => {
+          controlState.postProcessMask = postProcessToggle.checked;
+        });
+      }
+
+      updateAlphaMattingUI();
 
       let selectedModel = AVAILABLE_MODEL_IDS.has(DEFAULT_MODEL)
         ? DEFAULT_MODEL
@@ -769,6 +1026,18 @@
         const formData = new FormData();
         formData.append("file", file, file.name);
         formData.append("model", selectedModel);
+        formData.append("a", String(controlState.alphaMatting));
+        formData.append(
+          "af",
+          String(controlState.alphaMattingForegroundThreshold)
+        );
+        formData.append(
+          "ab",
+          String(controlState.alphaMattingBackgroundThreshold)
+        );
+        formData.append("ae", String(controlState.alphaMattingErodeSize));
+        formData.append("ppm", String(controlState.postProcessMask));
+        formData.append("om", "false");
 
         const modelConfig = MODELS.find((item) => item.id === selectedModel);
         let requestUrl;
