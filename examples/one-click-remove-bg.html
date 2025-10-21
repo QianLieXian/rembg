@@ -203,6 +203,68 @@
         gap: 20px;
       }
 
+      .output-format {
+        width: min(90vw, 720px);
+        margin: 0 auto 32px;
+        padding: 20px 24px;
+        border-radius: 20px;
+        background: var(--card);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .output-format {
+          background: var(--card-dark);
+          box-shadow: 0 10px 28px rgba(17, 24, 39, 0.6);
+          color: var(--text-dark);
+        }
+      }
+
+      .output-format__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .output-format__title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .output-format__choices {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .output-format__choice {
+        min-width: 80px;
+        text-align: center;
+      }
+
+      .output-format__hint {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .output-format__note {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--primary);
+      }
+
       @media (prefers-color-scheme: dark) {
         .control-panel {
           background: var(--card-dark);
@@ -821,6 +883,31 @@
       </div>
     </header>
 
+    <section
+      class="output-format"
+      id="output-format"
+      aria-labelledby="output-format-title"
+      aria-describedby="output-format-note"
+    >
+      <div class="output-format__header">
+        <div>
+          <p class="output-format__title" id="output-format-title">自动下载格式</p>
+          <p class="output-format__hint">
+            向左为 JPG 白底成品，适合电商白底图；向右为 PNG 透明图，适合保留透明背景。
+          </p>
+        </div>
+        <div class="output-format__choices">
+          <span class="output-format__choice" data-format-label="jpg">JPG 白底</span>
+          <label class="switch" aria-label="自动下载格式切换">
+            <input type="checkbox" id="output-format-toggle" checked />
+            <span class="switch-slider" aria-hidden="true"></span>
+          </label>
+          <span class="output-format__choice" data-format-label="png">PNG 透明</span>
+        </div>
+      </div>
+      <p class="output-format__note" id="output-format-note"></p>
+    </section>
+
     <label class="drop-area" id="drop-area" for="file-input">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path
@@ -922,6 +1009,8 @@
       const unlockAdvancedButton = document.getElementById("unlock-advanced");
       const advancedFeedback = document.getElementById("advanced-feedback");
       const postProcessToggle = document.getElementById("post-process-toggle");
+      const outputFormatToggle = document.getElementById("output-format-toggle");
+      const outputFormatNote = document.getElementById("output-format-note");
       const sliderDefinitions = [
         {
           stateKey: "alphaMattingForegroundThreshold",
@@ -947,6 +1036,39 @@
       );
 
       const MIN_ALPHA_THRESHOLD_GAP = 5;
+
+      const managedTasks = [];
+      let preferredFormat = "png";
+
+      const FORMAT_HINTS = {
+        jpg: "将自动下载 JPG 白底图，更适合商品白底展示。",
+        png: "将自动下载 PNG 透明图，便于后续排版合成。",
+      };
+
+      function syncPreferredFormatFromToggle() {
+        if (!outputFormatToggle) {
+          preferredFormat = "png";
+          return;
+        }
+
+        preferredFormat = outputFormatToggle.checked ? "png" : "jpg";
+        if (outputFormatNote && FORMAT_HINTS[preferredFormat]) {
+          outputFormatNote.textContent = FORMAT_HINTS[preferredFormat];
+        }
+
+        managedTasks.forEach((task) => {
+          if (task && typeof task.applyPreferredFormat === "function") {
+            task.applyPreferredFormat(preferredFormat);
+          }
+        });
+      }
+
+      if (outputFormatToggle) {
+        outputFormatToggle.addEventListener("change", syncPreferredFormatFromToggle);
+        syncPreferredFormatFromToggle();
+      } else if (outputFormatNote) {
+        outputFormatNote.textContent = FORMAT_HINTS.png;
+      }
 
       function blobToDataUrl(blob) {
         return new Promise((resolve, reject) => {
@@ -995,9 +1117,23 @@
 
         const totalPixels = width * height;
         const originalAlpha = new Uint8ClampedArray(totalPixels);
+        const premultipliedR = new Float32Array(totalPixels);
+        const premultipliedG = new Float32Array(totalPixels);
+        const premultipliedB = new Float32Array(totalPixels);
 
         for (let i = 0; i < totalPixels; i += 1) {
-          originalAlpha[i] = data[i * 4 + 3];
+          const alpha = data[i * 4 + 3];
+          originalAlpha[i] = alpha;
+          if (alpha === 0) {
+            premultipliedR[i] = 0;
+            premultipliedG[i] = 0;
+            premultipliedB[i] = 0;
+          } else {
+            const alphaNorm = alpha / 255;
+            premultipliedR[i] = data[i * 4] * alphaNorm;
+            premultipliedG[i] = data[i * 4 + 1] * alphaNorm;
+            premultipliedB[i] = data[i * 4 + 2] * alphaNorm;
+          }
         }
 
         const kernel = [
@@ -1005,6 +1141,8 @@
           [2, 4, 2],
           [1, 2, 1],
         ];
+
+        const smoothingStrength = 0.65;
 
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
@@ -1024,8 +1162,11 @@
               continue;
             }
 
-            let weightedSum = 0;
             let weightTotal = 0;
+            let alphaWeighted = 0;
+            let rWeighted = 0;
+            let gWeighted = 0;
+            let bWeighted = 0;
 
             for (let ky = -1; ky <= 1; ky += 1) {
               const ny = y + ky;
@@ -1040,8 +1181,12 @@
                   continue;
                 }
                 const weight = row[kx + 1];
-                weightedSum += weight * originalAlpha[ny * width + nx];
+                const neighborIndex = ny * width + nx;
                 weightTotal += weight;
+                alphaWeighted += weight * originalAlpha[neighborIndex];
+                rWeighted += weight * premultipliedR[neighborIndex];
+                gWeighted += weight * premultipliedG[neighborIndex];
+                bWeighted += weight * premultipliedB[neighborIndex];
               }
             }
 
@@ -1049,14 +1194,16 @@
               continue;
             }
 
-            const averaged = Math.round(weightedSum / weightTotal);
-            const finalAlpha = Math.max(
-              0,
-              Math.min(255, Math.round((averaged + baseAlpha) / 2))
-            );
+            const averageAlpha = alphaWeighted / weightTotal;
+            const mixedAlpha =
+              baseAlpha * (1 - smoothingStrength) + averageAlpha * smoothingStrength;
+            let finalAlpha = Math.round(Math.max(0, Math.min(255, mixedAlpha)));
 
-            const originalAlphaNorm = baseAlpha / 255;
-            const finalAlphaNorm = finalAlpha / 255;
+            if (finalAlpha < 4) {
+              finalAlpha = 0;
+            } else if (finalAlpha > 252) {
+              finalAlpha = 255;
+            }
 
             data[index * 4 + 3] = finalAlpha;
 
@@ -1064,21 +1211,27 @@
               data[index * 4] = 0;
               data[index * 4 + 1] = 0;
               data[index * 4 + 2] = 0;
-            } else if (originalAlphaNorm > 0) {
-              const ratio = finalAlphaNorm / originalAlphaNorm;
-              data[index * 4] = Math.max(
-                0,
-                Math.min(255, Math.round(data[index * 4] * ratio))
-              );
-              data[index * 4 + 1] = Math.max(
-                0,
-                Math.min(255, Math.round(data[index * 4 + 1] * ratio))
-              );
-              data[index * 4 + 2] = Math.max(
-                0,
-                Math.min(255, Math.round(data[index * 4 + 2] * ratio))
-              );
+              continue;
             }
+
+            const finalAlphaNorm = finalAlpha / 255;
+            const safeAlpha = Math.max(finalAlphaNorm, 1 / 255);
+            const avgR = rWeighted / weightTotal;
+            const avgG = gWeighted / weightTotal;
+            const avgB = bWeighted / weightTotal;
+
+            data[index * 4] = Math.max(
+              0,
+              Math.min(255, Math.round(avgR / safeAlpha))
+            );
+            data[index * 4 + 1] = Math.max(
+              0,
+              Math.min(255, Math.round(avgG / safeAlpha))
+            );
+            data[index * 4 + 2] = Math.max(
+              0,
+              Math.min(255, Math.round(avgB / safeAlpha))
+            );
           }
         }
       }
@@ -1611,6 +1764,8 @@
         const item = document.createElement("article");
         item.className = "task-item";
 
+        const baseName = file.name.replace(/\.[^.]+$/, "") || "output";
+
         const header = document.createElement("div");
         header.className = "task-header";
 
@@ -1657,7 +1812,10 @@
         downloadLink.className = "download-link";
         downloadLink.textContent = "下载结果";
         downloadLink.href = "#";
-        downloadLink.download = `${file.name.replace(/\.[^.]+$/, "")}-removed.png`;
+        downloadLink.download =
+          preferredFormat === "jpg"
+            ? `${baseName}-white.jpg`
+            : `${baseName}-removed.png`;
 
         item.appendChild(header);
         item.appendChild(progressBar);
@@ -1666,10 +1824,11 @@
 
         taskList.prepend(item);
 
-        const baseName = file.name.replace(/\.[^.]+$/, "") || "output";
         const formatButtons = { jpg: jpgOption, png: pngOption };
         let variants = null;
-        let selectedFormat = "png";
+        let selectedFormat = preferredFormat;
+        let pendingFormat = preferredFormat;
+        let hasManualSelection = false;
         let isCompleted = false;
 
         const updateFormatButtonState = () => {
@@ -1723,25 +1882,44 @@
           }
         };
 
-        const setSelectedFormat = (format) => {
-          if (variants && !variants[format]) {
-            updateFormatButtonState();
-            updateDownloadLink();
-            refreshStatusIfCompleted();
+        const setSelectedFormat = (
+          format,
+          { fromUser = false, force = false } = {}
+        ) => {
+          if (fromUser) {
+            hasManualSelection = true;
+          } else if (hasManualSelection && !force) {
             return;
           }
-          if (selectedFormat === format && variants?.[format]) {
-            refreshStatusIfCompleted();
+
+          pendingFormat = format;
+
+          if (!variants) {
+            selectedFormat = format;
             return;
           }
-          selectedFormat = format;
+
+          if (!variants[format]) {
+            if (variants.png) {
+              selectedFormat = "png";
+            } else if (variants.jpg) {
+              selectedFormat = "jpg";
+            }
+          } else {
+            selectedFormat = format;
+          }
+
           updateFormatButtonState();
           updateDownloadLink();
           refreshStatusIfCompleted();
         };
 
-        jpgOption.addEventListener("click", () => setSelectedFormat("jpg"));
-        pngOption.addEventListener("click", () => setSelectedFormat("png"));
+        jpgOption.addEventListener("click", () =>
+          setSelectedFormat("jpg", { fromUser: true, force: true })
+        );
+        pngOption.addEventListener("click", () =>
+          setSelectedFormat("png", { fromUser: true, force: true })
+        );
 
         downloadLink.addEventListener("click", (event) => {
           event.preventDefault();
@@ -1754,13 +1932,8 @@
         const setVariants = (newVariants) => {
           variants = newVariants;
           formatToggle.classList.remove("hidden");
-          if (variants.png) {
-            selectedFormat = "png";
-          } else if (variants.jpg) {
-            selectedFormat = "jpg";
-          }
-          updateFormatButtonState();
-          updateDownloadLink();
+          const target = hasManualSelection ? selectedFormat : pendingFormat;
+          setSelectedFormat(target, { force: !hasManualSelection });
         };
 
         const markCompleted = () => {
@@ -1775,7 +1948,19 @@
           }
         };
 
-        return {
+        const applyPreferredFormat = (format) => {
+          if (hasManualSelection) {
+            return;
+          }
+          setSelectedFormat(format, { force: true });
+          if (!variants) {
+            selectedFormat = format;
+            downloadLink.download =
+              format === "jpg" ? `${baseName}-white.jpg` : `${baseName}-removed.png`;
+          }
+        };
+
+        const taskApi = {
           item,
           status,
           progressFill,
@@ -1785,7 +1970,12 @@
           markCompleted,
           getActiveVariant: resolveActiveVariant,
           setSelectedFormat,
+          applyPreferredFormat,
         };
+
+        managedTasks.push(taskApi);
+
+        return taskApi;
       }
 
       function updateProgress(progressFill, percent) {
