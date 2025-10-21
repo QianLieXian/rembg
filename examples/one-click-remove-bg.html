@@ -402,7 +402,7 @@
 
     <section class="task-list" id="task-list"></section>
 
-    <footer>如需更换接口地址，请在文件中修改 API_BASE。</footer>
+    <footer>!!仅限公司内部使用!!</footer>
 
     <div class="model-dialog" id="model-dialog" role="dialog" aria-modal="true">
       <div class="model-dialog__card">
@@ -424,104 +424,104 @@
 
     <script>
       // 自定义接口地址，可根据需要修改。
-      const API_BASE = "http://localhost:7000/api";
+      const API_BASE = "http://192.168.1.5:7000/api";
       const ENDPOINT = API_BASE.replace(/\/$/, "") + "/remove";
-      const DEFAULT_MODEL = "u2net";
+      const DEFAULT_MODEL = "bria-rmbg";
 
       const MODELS = [
         {
           id: "u2net",
-          name: "U²-Net 通用",
+          name: "U²-Net 通用-快但扣不太好",
           description: "适用多种主体抠图场景，平衡速度与质量。",
         },
-        {
-          id: "u2netp",
-          name: "U²-Net P 轻量",
-          description: "体积小速度快，适合实时或批量处理。",
-        },
-        {
-          id: "u2net_human_seg",
-          name: "U²-Net 人像",
-          description: "针对人物主体调优，发丝与轮廓更平滑。",
-        },
-        {
-          id: "u2net_cloth_seg",
-          name: "U²-Net 服饰",
-          description: "专注衣物与商品分割，适合换装和电商场景。",
-        },
-        {
-          id: "u2net_custom",
-          name: "U²-Net 自定义",
-          description: "用于加载自定义权重（需在服务器提供 model_path）。",
-        },
-        {
-          id: "birefnet-general",
-          name: "BiRefNet 通用",
-          description: "高清通用模型，复杂背景下保持清晰边缘。",
-        },
-        {
-          id: "birefnet-general-lite",
-          name: "BiRefNet 通用 Lite",
-          description: "BiRefNet 的加速版，性能与速度取得平衡。",
-        },
-        {
-          id: "birefnet-portrait",
-          name: "BiRefNet 人像",
-          description: "针对肖像优化，保留更多细微毛发和半透明区域。",
-        },
-        {
-          id: "birefnet-dis",
-          name: "BiRefNet DIS 细节",
-          description: "以高分辨率细节为目标，适合复杂边缘主体。",
-        },
-        {
-          id: "birefnet-hrsod",
-          name: "BiRefNet HRSOD",
-          description: "针对大主体突出场景，显著物体分离效果佳。",
-        },
-        {
-          id: "birefnet-cod",
-          name: "BiRefNet COD",
-          description: "面向伪装/隐蔽主体，复杂背景下定位更稳。",
-        },
-        {
-          id: "birefnet-massive",
-          name: "BiRefNet Massive",
-          description: "最重的高保真版本，追求极致画质。",
-        },
+       // {
+       //   id: "u2netp",
+       //   name: "U²-Net P 轻量",
+       //   description: "体积小速度快，适合实时或批量处理。",
+       // },
+       // {
+       //   id: "u2net_human_seg",
+       //   name: "U²-Net 人像",
+       //   description: "针对人物主体调优，发丝与轮廓更平滑。",
+       // },
+       // {
+       //   id: "u2net_cloth_seg",
+       //   name: "U²-Net 服饰",
+       //   description: "专注衣物与商品分割，适合换装和电商场景。",
+       // },
+       // {
+       //   id: "u2net_custom",
+       //   name: "U²-Net 自定义",
+       //   description: "用于加载自定义权重（需在服务器提供 model_path）。",
+       // },
+       // {
+       //   id: "birefnet-general",
+       //   name: "BiRefNet 通用",
+       //   description: "高清通用模型，复杂背景下保持清晰边缘。",
+       // },
+       // {
+       //   id: "birefnet-general-lite",
+       //   name: "BiRefNet 通用 Lite",
+       //   description: "BiRefNet 的加速版，性能与速度取得平衡。",
+       // },
+       // {
+       //   id: "birefnet-portrait",
+       //   name: "BiRefNet 人像",
+       //   description: "针对肖像优化，保留更多细微毛发和半透明区域。",
+       // },
+       // {
+       //   id: "birefnet-dis",
+       //   name: "BiRefNet DIS 细节",
+       //   description: "以高分辨率细节为目标，适合复杂边缘主体。",
+       // },
+       // {
+       //   id: "birefnet-hrsod",
+       //   name: "BiRefNet HRSOD",
+       //   description: "针对大主体突出场景，显著物体分离效果佳。",
+       // },
+       // {
+       //   id: "birefnet-cod",
+       //   name: "BiRefNet COD",
+       //   description: "面向伪装/隐蔽主体，复杂背景下定位更稳。",
+       // },
+       // {
+       //   id: "birefnet-massive",
+       //   name: "BiRefNet Massive",
+       //   description: "最重的高保真版本，追求极致画质。",
+       // },
         {
           id: "bria-rmbg",
-          name: "BRIA RMBG v2",
+          name: "BRIA RMBG v2-慢，但扣的好",
           description: "来自 BRIA 的商业模型，电商与商品抠图表现稳定。",
         },
         {
           id: "isnet-general-use",
-          name: "IS-Net 通用",
+          name: "IS-Net 通用-快，扣的一般",
           description: "IS-Net 官方权重，兼顾速度与准确率。",
         },
-        {
-          id: "isnet-anime",
-          name: "IS-Net 动漫",
-          description: "面向二次元/插画主体，边缘干净不毛刺。",
-        },
-        {
-          id: "dis_custom",
-          name: "DIS 自定义",
-          description: "兼容自训练 DIS 模型（需在服务器提供 model_path）。",
-        },
-        {
-          id: "ben_custom",
-          name: "Background Eraser 自定义",
-          description: "适配 BEN/BG Eraser 系列自定义权重。",
-        },
+       // {
+       //   id: "isnet-anime",
+       //   name: "IS-Net 动漫",
+       //   description: "面向二次元/插画主体，边缘干净不毛刺。",
+       // },
+       // {
+       //   id: "dis_custom",
+       //   name: "DIS 自定义",
+       //   description: "兼容自训练 DIS 模型（需在服务器提供 model_path）。",
+       // },
+       // {
+       //   id: "ben_custom",
+       //   name: "Background Eraser 自定义",
+       //   description: "适配 BEN/BG Eraser 系列自定义权重。",
+       // },
         {
           id: "sam",
-          name: "Segment Anything (SAM)",
+          name: "Segment Anything (SAM)-极快，扣的非常不行",
           description: "支持 SAM 编解码流程，可配合 extras 指定提示点。",
         },
         {
           id: "silueta",
-          name: "Silueta",
+          name: "Silueta-调用使用",
           description: "轻量抠图网络，适合部署在资源受限环境。",
         },
       ];
